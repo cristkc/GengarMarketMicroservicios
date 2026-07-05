@@ -1,0 +1,457 @@
+version: "3.9"
+
+services:
+
+  # ---------------------------
+  # EUREKA SERVER
+  # ---------------------------
+  eureka-server:
+    build: ./eurekaserver
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # AUTENTIFICACION
+  # ---------------------------
+  mysql-auth:
+    image: mysql:8
+    container_name: mysql-auth
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: autentificacion
+    ports:
+      - "3307:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  autentificacion:
+    build: ./autentificacion
+    container_name: autentificacion
+    depends_on:
+      mysql-auth:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/autentificacion
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8080:8080"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # CATALOGO
+  # ---------------------------
+  mysql-catalogo:
+    image: mysql:8
+    container_name: mysql-catalogo
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: catalogo
+    ports:
+      - "3308:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  catalogo:
+    build: ./catalogo
+    container_name: catalogo
+    depends_on:
+      mysql-catalogo:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-catalogo:3306/catalogo
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8081:8081"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # CARRITO
+  # ---------------------------
+  mysql-carrito:
+    image: mysql:8
+    container_name: mysql-carrito
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: carrito
+    ports:
+      - "3309:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  carrito:
+    build: ./Carrito
+    container_name: carrito
+    depends_on:
+      mysql-carrito:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      autentificacion:
+        condition: service_started
+      catalogo:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-carrito:3306/carrito
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      AUTH_SERVICE_URL: http://autentificacion:8080
+      CATALOGO_SERVICE_URL: http://catalogo:8081
+    ports:
+      - "8082:8082"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # CUPONES
+  # ---------------------------
+  mysql-cupones:
+    image: mysql:8
+    container_name: mysql-cupones
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: descuento
+    ports:
+      - "3310:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  cupones:
+    build: ./cupones
+    container_name: cupones
+    depends_on:
+      mysql-cupones:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-cupones:3306/descuento
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8085:8085"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # PAGO
+  # ---------------------------
+  mysql-pago:
+    image: mysql:8
+    container_name: mysql-pago
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: pago
+    ports:
+      - "3311:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  pago:
+    build: ./pago
+    container_name: pago
+    depends_on:
+      mysql-pago:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      carrito:
+        condition: service_started
+      cupones:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-pago:3306/pago
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8083:8083"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # GESTIONPEDIDO
+  # ---------------------------
+  mysql-gestionpedido:
+    image: mysql:8
+    container_name: mysql-gestionpedido
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: gestionpedido
+    ports:
+      - "3312:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  gestionpedido:
+    build: ./gestionPedido
+    container_name: gestionpedido
+    depends_on:
+      mysql-gestionpedido:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      pago:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-gestionpedido:3306/gestionpedido
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8084:8084"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # CERTIFICACION
+  # ---------------------------
+  mysql-certificacion:
+    image: mysql:8
+    container_name: mysql-certificacion
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: certificacion
+    ports:
+      - "3313:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  certificacion:
+    build: ./certificacion
+    container_name: certificacion
+    depends_on:
+      mysql-certificacion:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      gestionpedido:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-certificacion:3306/certificacion
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8086:8086"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # DESPACHO
+  # ---------------------------
+  mysql-despacho:
+    image: mysql:8
+    container_name: mysql-despacho
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: Despacho
+    ports:
+      - "3314:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  despacho:
+    build: ./Despacho
+    container_name: despacho
+    depends_on:
+      mysql-despacho:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      gestionpedido:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-despacho:3306/Despacho
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      GESTIONPEDIDO_SERVICE_URL: http://gestionpedido:8084
+    ports:
+      - "8089:8089"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # REPORTES
+  # ---------------------------
+  mysql-reportess:
+    image: mysql:8
+    container_name: mysql-reportess
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: reportess
+    ports:
+      - "3315:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  reportess:
+    build: ./reportess
+    container_name: reportess
+    depends_on:
+      mysql-reportess:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      pago:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-reportess:3306/reportess
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      PAGO_SERVICE_URL: http://pago:8083
+    ports:
+      - "8088:8088"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # REFERENCIAS
+  # ---------------------------
+  mysql-referencias:
+    image: mysql:8
+    container_name: mysql-referencias
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: Referencias
+    ports:
+      - "3316:3306"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  referencias:
+    build: ./Referencias
+    container_name: referencias
+    depends_on:
+      mysql-referencias:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      autentificacion:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-referencias:3306/Referencias
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      AUTH_SERVICE_URL: http://autentificacion:8080
+    ports:
+      - "8087:8087"
+    networks:
+      - backend-net
+
+  # ---------------------------
+  # API GATEWAY
+  # ---------------------------
+  apigateway:
+    build: ./apigateway
+    container_name: apigateway
+    depends_on:
+      eureka-server:
+        condition: service_started
+      autentificacion:
+        condition: service_started
+      catalogo:
+        condition: service_started
+      carrito:
+        condition: service_started
+      pago:
+        condition: service_started
+      gestionpedido:
+        condition: service_started
+      cupones:
+        condition: service_started
+      certificacion:
+        condition: service_started
+      referencias:
+        condition: service_started
+      despacho:
+        condition: service_started
+      reportess:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8099:8099"
+    networks:
+      - backend-net
+
+networks:
+  backend-net:
+    driver: bridge

@@ -1,0 +1,11 @@
+# Carpetas de build de Maven (contienen los .jar compilados, no deben subirse)
+**/target/
+
+# Archivos de IDE
+.idea/
+*.iml
+.vscode/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
